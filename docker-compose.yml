@@ -1,0 +1,56 @@
+# Nextcloud home server: app + MariaDB + Redis + background-jobs cron.
+# Secrets come from .env (created by 01-setup.sh).
+# Fixed project name: the service monitor and volume names rely on it.
+name: nextcloud-server
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    volumes:
+      - db:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  app:
+    image: nextcloud:stable-apache
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - nextcloud:/var/www/html
+    environment:
+      MYSQL_HOST: db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      NEXTCLOUD_ADMIN_USER: ${ADMIN_USER}
+      NEXTCLOUD_ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      NEXTCLOUD_TRUSTED_DOMAINS: ${TRUSTED_DOMAINS}
+      PHP_UPLOAD_LIMIT: 10G
+      PHP_MEMORY_LIMIT: 1G
+
+  cron:
+    image: nextcloud:stable-apache
+    restart: unless-stopped
+    entrypoint: /cron.sh
+    depends_on:
+      - app
+    volumes:
+      - nextcloud:/var/www/html
+
+volumes:
+  db:
+  nextcloud:
