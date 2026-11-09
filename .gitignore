@@ -9,6 +9,7 @@ db/
 nextcloud/
 html/
 config/
+UNINSTALL.md
 
 # Backups and database dumps
 *.sql
